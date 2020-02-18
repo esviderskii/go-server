@@ -1,47 +1,26 @@
 package main
 
 import (
-    "fmt"
-    "io/ioutil"
-    "net/http"
+	"flag"
+	"log"
+	"net/http"
+
+	"github.com/esviderskii/go-server/helpers"
+	"github.com/spf13/viper"
 )
 
-func uploadFile(w http.ResponseWriter, r *http.Request) {
-    fmt.Println("File Upload Endpoint Hit")
-
-    r.ParseMultipartForm(10 << 20)
-    file, handler, err := r.FormFile("myFile")
-    if err != nil {
-        fmt.Println("Error Retrieving the File")
-        fmt.Println(err)
-        return
-    }
-    defer file.Close()
-    fmt.Printf("Uploaded File: %+v\n", handler.Filename)
-    fmt.Printf("File Size: %+v\n", handler.Size)
-    fmt.Printf("MIME Header: %+v\n", handler.Header)
-
-    tempFile, err := ioutil.TempFile("temp-images", "upload-*.png")
-    if err != nil {
-        fmt.Println(err)
-    }
-    defer tempFile.Close()
-
-    fileBytes, err := ioutil.ReadAll(file)
-    if err != nil {
-        fmt.Println(err)
-    }
-    tempFile.Write(fileBytes)
-    fmt.Fprintf(w, "Successfully Uploaded File\n")
-}
+var port = flag.String("p", "8080", "port to serve on")
+var dir = flag.String("d", "./", "the dir of static file to host")
 
 func setupRoutes() {
-    http.HandleFunc("/upload", uploadFile)
-    http.ListenAndServe(":8080", nil)
+
+	http.Handle("/", http.FileServer(http.Dir(viper.GetString("path"))))
+	http.HandleFunc("/upload", helpers.UploadFile)
+	log.Fatal(http.ListenAndServe(":"+viper.GetString("port"), nil))
 }
 
 func main() {
-    fmt.Println("Hello World")
-    setupRoutes()
+	flag.Parse()
+	log.Printf("Serving %s on HTTP port: %s\n", viper.GetString("path"), viper.GetString("port"))
+	setupRoutes()
 }
-
